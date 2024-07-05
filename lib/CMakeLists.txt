@@ -69,7 +69,7 @@ if (UNIX AND NOT APPLE AND NOT ANDROID)
 endif (UNIX AND NOT APPLE AND NOT ANDROID)
 
 if (WIN32)
-	set (LIBRARIES ${LIBRARIES} ws2_32)
+	set (LIBRARIES ${LIBRARIES} ws2_32 advapi32)
 endif (WIN32)
 
 if (WITH_SRV)
@@ -82,6 +82,18 @@ if (WITH_SRV)
 		message(WARNING "c-ares library not found.")
 	endif (ARES_HEADER)
 endif (WITH_SRV)
+
+if (WIN32)
+	include( Windows-MyDllVersion )
+	generate_product_dll_version(MOSQ_C_VERSION_FILES
+		NAME "libmosquitto - MQTT version 5.0/3.1.1 client library"
+		VERSION_MAJOR ${MOSQ_VER_MAJOR}
+		VERSION_MINOR ${MOSQ_VER_MINOR}
+		VERSION_PATCH ${MOSQ_VER_PATCH}
+		VERSION_REVISION ${MY_REVISION}
+		ORIGINAL_FILENAME "mosquitto.dll")
+	set (C_SRC ${C_SRC} ${MOSQ_C_VERSION_FILES})
+endif (WIN32)
 
 add_library(libmosquitto SHARED ${C_SRC})
 set_target_properties(libmosquitto PROPERTIES
@@ -96,10 +108,12 @@ set_target_properties(libmosquitto PROPERTIES
 	SOVERSION 1
 )
 
-install(TARGETS libmosquitto
-	RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-	ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-	LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+if (NOT MOSQUITTO_WITHOUT_INSTALL_LIBRARIES AND NOT MOSQUITTO_WITHOUT_INSTALL_ALL)
+	install(TARGETS libmosquitto
+		RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+		ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+		LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+endif ()
 
 if (WITH_STATIC_LIBRARIES)
 	add_library(libmosquitto_static STATIC ${C_SRC})
@@ -117,8 +131,12 @@ if (WITH_STATIC_LIBRARIES)
 	)
 
 	target_compile_definitions(libmosquitto_static PUBLIC "LIBMOSQUITTO_STATIC")
-	install(TARGETS libmosquitto_static ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+	if (NOT MOSQUITTO_WITHOUT_INSTALL_LIBRARIES AND NOT MOSQUITTO_WITHOUT_INSTALL_ALL)
+		install(TARGETS libmosquitto_static ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+	endif ()
 endif (WITH_STATIC_LIBRARIES)
 
-install(FILES ../include/mosquitto.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-install(FILES ../include/mqtt_protocol.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+if (NOT MOSQUITTO_WITHOUT_INSTALL_HEADERS AND NOT MOSQUITTO_WITHOUT_INSTALL_ALL)
+	install(FILES ../include/mosquitto.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+	install(FILES ../include/mqtt_protocol.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+endif ()
