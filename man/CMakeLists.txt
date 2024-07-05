@@ -5,7 +5,7 @@
 # because the install is optional.
 
 find_program(XSLTPROC xsltproc OPTIONAL)
-if(XSLTPROC)
+if(XSLTPROC AND NOT MOSQUITTO_WITHOUT_INSTALL_FILES AND NOT MOSQUITTO_WITHOUT_INSTALL_ALL)
 	function(compile_manpage page)
 		add_custom_command(OUTPUT ${PROJECT_SOURCE_DIR}/man/${page}
 			COMMAND xsltproc ${PROJECT_SOURCE_DIR}/man/${page}.xml -o ${PROJECT_SOURCE_DIR}/man/
