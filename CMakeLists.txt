@@ -10,6 +10,8 @@ cmake_policy(SET CMP0042 NEW)
 project(mosquitto)
 set (VERSION 2.0.18)
 
+message(STATUS "Eclipse Mosquitto version ${VERSION}")
+
 ## Separate version number into 4 parts
 string(REGEX MATCHALL "[0-9]+" _my_ver_LIST "${VERSION}")
 list(LENGTH _my_ver_LIST _my_list_len)
