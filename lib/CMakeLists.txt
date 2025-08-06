@@ -4,9 +4,10 @@ if (WITH_LIB_CPP)
 endif (WITH_LIB_CPP)
 
 include_directories(${mosquitto_SOURCE_DIR} ${mosquitto_SOURCE_DIR}/lib
+			${OPENSSL_INCLUDE_DIR} # Required for cross compilation
 			${mosquitto_SOURCE_DIR}/include
-			${STDBOOL_H_PATH} ${STDINT_H_PATH}
-			${OPENSSL_INCLUDE_DIR} ${PTHREAD_INCLUDE_DIR})
+			${STDBOOL_H_PATH} ${STDINT_H_PATH})
+
 link_directories(${mosquitto_SOURCE_DIR}/lib)
 
 if (WITH_BUNDLED_DEPS)
@@ -59,7 +60,7 @@ set(C_SRC
 	util_mosq.c util_topic.c util_mosq.h
 	will_mosq.c will_mosq.h)
 
-set (LIBRARIES ${OPENSSL_LIBRARIES} ${PTHREAD_LIBRARIES})
+set (LIBRARIES OpenSSL::SSL)
 
 if (UNIX AND NOT APPLE AND NOT ANDROID)
 	find_library(LIBRT rt)
@@ -100,6 +101,17 @@ set_target_properties(libmosquitto PROPERTIES
 	POSITION_INDEPENDENT_CODE 1
 )
 
+if (WITH_THREADING)
+	if(WIN32)
+		set (LIBRARIES ${LIBRARIES} PThreads4W::PThreads4W)
+	else()
+		set(THREADS_PREFER_PTHREAD_FLAG ON)
+		find_package(Threads REQUIRED)
+
+		set (LIBRARIES ${LIBRARIES} Threads::Threads)
+	endif()
+endif()
+
 target_link_libraries(libmosquitto ${LIBRARIES})
 
 set_target_properties(libmosquitto PROPERTIES
@@ -107,6 +119,13 @@ set_target_properties(libmosquitto PROPERTIES
 	VERSION ${VERSION}
 	SOVERSION 1
 )
+
+if(UNIX AND NOT APPLE)
+	set_target_properties(libmosquitto PROPERTIES
+		LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/linker.version
+		LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/linker.version"
+	)
+endif()
 
 if (NOT MOSQUITTO_WITHOUT_INSTALL_LIBRARIES AND NOT MOSQUITTO_WITHOUT_INSTALL_ALL)
 	install(TARGETS libmosquitto

@@ -29,7 +29,7 @@ int db__message_store(const struct mosquitto *source, struct mosquitto_msg_store
 	UNUSED(message_expiry_interval);
 	UNUSED(store_id);
 	UNUSED(origin);
-    return 0;
+	return 0;
 }
 
 void db__msg_store_ref_inc(struct mosquitto_msg_store *store)
@@ -101,14 +101,13 @@ int retain__store(const char *topic, struct mosquitto_msg_store *stored, char **
 	return 0;
 }
 
-int sub__add(struct mosquitto *context, const char *sub, uint8_t qos, uint32_t identifier, int options, struct mosquitto__subhier **root)
+int sub__add(struct mosquitto *context, const char *sub, uint8_t qos, uint32_t identifier, int options)
 {
 	UNUSED(context);
 	UNUSED(sub);
 	UNUSED(qos);
 	UNUSED(identifier);
 	UNUSED(options);
-	UNUSED(root);
 	return 0;
 }
 

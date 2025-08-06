@@ -29,7 +29,7 @@ if (WITH_TLS)
 		${MOSQ_PASS_SRCS}
 		)
 
-	target_link_libraries(mosquitto_passwd ${OPENSSL_LIBRARIES})
+	target_link_libraries(mosquitto_passwd OpenSSL::SSL)
 	if (NOT MOSQUITTO_WITHOUT_INSTALL_FILES AND NOT MOSQUITTO_WITHOUT_INSTALL_ALL)
 		install(TARGETS mosquitto_passwd RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 	endif ()

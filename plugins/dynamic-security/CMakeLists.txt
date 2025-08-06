@@ -47,7 +47,7 @@ if (CJSON_FOUND AND WITH_TLS)
 	)
 	set_target_properties(mosquitto_dynamic_security PROPERTIES PREFIX "")
 
-	target_link_libraries(mosquitto_dynamic_security ${CJSON_LIBRARIES} ${OPENSSL_LIBRARIES})
+	target_link_libraries(mosquitto_dynamic_security ${CJSON_LIBRARIES} OpenSSL::SSL)
 	if(WIN32)
 		target_link_libraries(mosquitto_dynamic_security mosquitto)
 		if(NOT MOSQUITTO_WITHOUT_INSTALL_FILES AND NOT MOSQUITTO_WITHOUT_INSTALL_ALL)
