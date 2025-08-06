@@ -198,6 +198,15 @@ void net__init_tls(void)
 }
 #endif
 
+bool net__is_connected(struct mosquitto *mosq)
+{
+#if defined(WITH_BROKER) && defined(WITH_WEBSOCKETS)
+	return mosq->sock != INVALID_SOCKET || mosq->wsi != NULL;
+#else
+	return mosq->sock != INVALID_SOCKET;
+#endif
+}
+
 /* Close a socket associated with a context and set it to -1.
  * Returns 1 on failure (context is NULL)
  * Returns 0 on success.
@@ -352,9 +361,7 @@ int net__try_connect_step2(struct mosquitto *mosq, uint16_t port, mosq_sock_t *s
 		}
 
 		rc = connect(*sock, rp->ai_addr, rp->ai_addrlen);
-#ifdef WIN32
-		errno = WSAGetLastError();
-#endif
+		WINDOWS_SET_ERRNO();
 		if(rc == 0 || errno == EINPROGRESS || errno == COMPAT_EWOULDBLOCK){
 			if(rc < 0 && (errno == EINPROGRESS || errno == COMPAT_EWOULDBLOCK)){
 				rc = MOSQ_ERR_CONN_PENDING;
@@ -452,9 +459,7 @@ static int net__try_connect_tcp(const char *host, uint16_t port, mosq_sock_t *so
 		}
 
 		rc = connect(*sock, rp->ai_addr, rp->ai_addrlen);
-#ifdef WIN32
-		errno = WSAGetLastError();
-#endif
+		WINDOWS_SET_ERRNO();
 		if(rc == 0 || errno == EINPROGRESS || errno == COMPAT_EWOULDBLOCK){
 			if(rc < 0 && (errno == EINPROGRESS || errno == COMPAT_EWOULDBLOCK)){
 				rc = MOSQ_ERR_CONN_PENDING;
@@ -550,7 +555,6 @@ void net__print_ssl_error(struct mosquitto *mosq)
 
 int net__socket_connect_tls(struct mosquitto *mosq)
 {
-	int ret, err;
 	long res;
 
 	ERR_clear_error();
@@ -714,8 +718,8 @@ static int net__init_ssl_ctx(struct mosquitto *mosq)
 		}
 
 #ifdef SSL_MODE_RELEASE_BUFFERS
-			/* Use even less memory per SSL connection. */
-			SSL_CTX_set_mode(mosq->ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
+		/* Use even less memory per SSL connection. */
+		SSL_CTX_set_mode(mosq->ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 #endif
 
 #if !defined(OPENSSL_NO_ENGINE)
@@ -936,34 +940,30 @@ int net__socket_connect(struct mosquitto *mosq, const char *host, uint16_t port,
 
 
 #ifdef WITH_TLS
-static int net__handle_ssl(struct mosquitto* mosq, int ret)
+static void net__handle_ssl(struct mosquitto* mosq, int ret)
 {
 	int err;
 
 	err = SSL_get_error(mosq->ssl, ret);
 	if (err == SSL_ERROR_WANT_READ) {
-		ret = -1;
 		errno = EAGAIN;
 	}
 	else if (err == SSL_ERROR_WANT_WRITE) {
-		ret = -1;
 #ifdef WITH_BROKER
 		mux__add_out(mosq);
 #else
 		mosq->want_write = true;
 #endif
 		errno = EAGAIN;
-	}
-	else {
+	}else if(err == SSL_ERROR_SSL){
 		net__print_ssl_error(mosq);
 		errno = EPROTO;
+	/* else if SSL_ERROR_SYSCALL leave errno alone */
 	}
 	ERR_clear_error();
 #ifdef WIN32
 	WSASetLastError(errno);
 #endif
-
-	return ret;
 }
 #endif
 
@@ -976,9 +976,10 @@ ssize_t net__read(struct mosquitto *mosq, void *buf, size_t count)
 	errno = 0;
 #ifdef WITH_TLS
 	if(mosq->ssl){
+		ERR_clear_error();
 		ret = SSL_read(mosq->ssl, buf, (int)count);
 		if(ret <= 0){
-			ret = net__handle_ssl(mosq, ret);
+			net__handle_ssl(mosq, ret);
 		}
 		return (ssize_t )ret;
 	}else{
@@ -1007,10 +1008,11 @@ ssize_t net__write(struct mosquitto *mosq, const void *buf, size_t count)
 	errno = 0;
 #ifdef WITH_TLS
 	if(mosq->ssl){
+		ERR_clear_error();
 		mosq->want_write = false;
 		ret = SSL_write(mosq->ssl, buf, (int)count);
 		if(ret < 0){
-			ret = net__handle_ssl(mosq, ret);
+			net__handle_ssl(mosq, ret);
 		}
 		return (ssize_t )ret;
 	}else{
@@ -1128,9 +1130,7 @@ int net__socketpair(mosq_sock_t *pairR, mosq_sock_t *pairW)
 			continue;
 		}
 		if(connect(spR, (struct sockaddr *)&ss, ss_len) < 0){
-#ifdef WIN32
-			errno = WSAGetLastError();
-#endif
+			WINDOWS_SET_ERRNO();
 			if(errno != EINPROGRESS && errno != COMPAT_EWOULDBLOCK){
 				COMPAT_CLOSE(spR);
 				COMPAT_CLOSE(listensock);
@@ -1139,9 +1139,7 @@ int net__socketpair(mosq_sock_t *pairR, mosq_sock_t *pairW)
 		}
 		spW = accept(listensock, NULL, 0);
 		if(spW == -1){
-#ifdef WIN32
-			errno = WSAGetLastError();
-#endif
+			WINDOWS_SET_ERRNO();
 			if(errno != EINPROGRESS && errno != COMPAT_EWOULDBLOCK){
 				COMPAT_CLOSE(spR);
 				COMPAT_CLOSE(listensock);

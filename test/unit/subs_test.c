@@ -58,11 +58,12 @@ static void TEST_sub_add_single(void)
 
 	db__open(&config);
 
-	rc = sub__add(&context, "a/b/c/d/e", 0, 0, 0, &db.subs);
+	rc = sub__add(&context, "a/b/c/d/e", 0, 0, 0);
 	CU_ASSERT_EQUAL(rc, MOSQ_ERR_SUCCESS);
-	CU_ASSERT_PTR_NOT_NULL(db.subs);
-	if(db.subs){
-		sub = db.subs;
+	CU_ASSERT_PTR_NOT_NULL(db.shared_subs);
+	CU_ASSERT_PTR_NOT_NULL(db.normal_subs);
+	if(db.normal_subs){
+		sub = db.normal_subs;
 
 		hier_quick_check(&sub, NULL, "");
 		hier_quick_check(&sub, NULL, "");
@@ -91,15 +92,15 @@ int main(int argc, char *argv[])
 	UNUSED(argc);
 	UNUSED(argv);
 
-    if(CU_initialize_registry() != CUE_SUCCESS){
-        printf("Error initializing CUnit registry.\n");
-        return 1;
-    }
+	if(CU_initialize_registry() != CUE_SUCCESS){
+		printf("Error initializing CUnit registry.\n");
+		return 1;
+	}
 
 	test_suite = CU_add_suite("Subs", NULL, NULL);
 	if(!test_suite){
 		printf("Error adding CUnit Subs test suite.\n");
-        CU_cleanup_registry();
+		CU_cleanup_registry();
 		return 1;
 	}
 
@@ -109,13 +110,13 @@ int main(int argc, char *argv[])
 
 		printf("Error adding Subs CUnit tests.\n");
 		CU_cleanup_registry();
-        return 1;
-    }
+		return 1;
+	}
 
-    CU_basic_set_mode(CU_BRM_VERBOSE);
-    CU_basic_run_tests();
+	CU_basic_set_mode(CU_BRM_VERBOSE);
+	CU_basic_run_tests();
 	fails = CU_get_number_of_failures();
-    CU_cleanup_registry();
+	CU_cleanup_registry();
 
-    return (int)fails;
+	return (int)fails;
 }
